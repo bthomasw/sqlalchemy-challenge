@@ -31,8 +31,8 @@ def home():
         f"/api/v1.0/precipitation<br/>"
         f"/api/v1.0/stations<br/>"
         f"/api/v1.0/tobs<br/>"
-        f"/api/v1.0/<start><br/>"
-        f"/api/v1.0/<start>/<end><br/>"
+        f"/api/v1.0/2016-08-23 (calculates max, min, and avg temp after a certain date)<br/>"
+        f"/api/v1.0/2016-08-23/2017-08-23 (calculates max, min, and avg temp between two dates)<br/>"
     )
 
 @app.route("/api/v1.0/precipitation")
@@ -84,7 +84,31 @@ def temp_most_active_station():
         ).all()
     
     all_temps = list(np.ravel(results))
-    return all_temps
+    return jsonify(all_temps)
+
+@app.route("/api/v1.0/<start>")
+def state_date(start):
+    start_datetime = dt.datetime.strptime(start, '%Y-%m-%d')
+    session = Session(engine)
+    min_avg_max = session.query(func.max(Measurement.tobs), func.min(Measurement.tobs), func.avg(Measurement.tobs)).\
+        filter(Measurement.date > start_datetime).all()
+    session.close()
+    return(f"Max Temp: {min_avg_max[0][0]}<br/>Min Temp: {min_avg_max[0][1]}<br/>Avg Temp: {min_avg_max[0][2]}")
+
+
+@app.route("/api/v1.0/<start>/<end>")
+def end_date(start, end):
+    start_datetime = dt.datetime.strptime(start, '%Y-%m-%d')
+    end_datetime = dt.datetime.strptime(end, '%Y-%m-%d')
+    session = Session(engine)
+    min_avg_max = session.query(func.max(Measurement.tobs), func.min(Measurement.tobs), func.avg(Measurement.tobs)).\
+        filter(
+            and_(
+                Measurement.date > start_datetime, Measurement.date < end_datetime
+            )
+        ).all()
+    session.close()
+    return(f"Max Temp: {min_avg_max[0][0]}<br/>Min Temp: {min_avg_max[0][1]}<br/>Avg Temp: {min_avg_max[0][2]}")
 
 if __name__ == "__main__":
     app.run(debug=True)
